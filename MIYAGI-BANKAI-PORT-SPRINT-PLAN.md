@@ -543,3 +543,34 @@ The port is complete when:
 
 This ordering resolves model mapping, patch identity, and rollback risks before
 the CLI or behavioral experiments can hide them.
+
+## Implementation Results
+
+The planned native port is implemented in this workspace.
+
+| Capability | Result | Evidence |
+| --- | --- | --- |
+| Crate foundation | Passed | `Cargo.toml`, `Cargo.lock`, library modules, binary, `.gitignore`, and README are present. |
+| wwama integration | Passed | `WwamaBackend` uses the safe wwama session, tensor descriptors, row scales, row XOR, selected logits, and generation APIs. |
+| Architecture discovery | Passed | Bonsai 8B reports 36 layers and 399 tensors; Bonsai 27B reports 64 layers and 851 tensors without hard-coded dimensions. |
+| Patch compatibility | Passed | All three checked-in Bankai patches parse; canonical `format` and legacy `type` schemas are covered. |
+| Patch safety | Passed | Coordinates, Q1_0 type, rows, signatures, duplicate flips, atomic writes, composition, and rollback are validated. |
+| Probe and fitness port | Passed | Built-in math/code/knowledge probes, custom JSON, last-token compatibility, strict token mode, mean fitness, minimum fitness, and reports are implemented. |
+| Search | Passed | Deterministic SplitMix64 sampling, scale weighting, two-probe screening, acceptance/rejection rollback, checkpoints, resume, cancellation, and applied-state reporting are implemented and fake-backend tested. |
+| CLI | Passed | `inspect`, `info`, `compose`, `eval`, `apply`, `search`, and `benchmark` are implemented; CLI help, legacy info, model inspect, eval, apply, and bounded search were exercised. |
+| CPU model | Passed | Bonsai 8B Q1_0 mutation changes measured logits, preserves row scales, changes packed bytes, and restores exact bytes and logits. |
+| CUDA model | Passed | Miyagi fixture test passed with all 37 layers on CUDA0 on the RTX 4050. |
+| Vulkan model | Passed | Miyagi fixture test passed with all 37 layers on Vulkan0 on the RTX 4050. |
+| wasm32 compilation | Passed | CPU-only `wasm32-unknown-unknown` check passes; mutable runtime remains capability-gated by wwama. |
+| llama.cpp changes | Not required | No llama.cpp source file was changed. |
+
+### Remaining evidence boundaries
+
+- Bankai patches trained against MLX are structurally importable into GGUF, and
+  `calculus_v1` was evaluated through Miyagi, but cross-format behavioral parity
+  is not claimed without a controlled conversion comparison.
+- Full generalization and safety experiments are available through custom probe
+  files and the dataset benchmark command; their scientific outcomes remain
+  model- and dataset-dependent rather than being hard-coded into the crate.
+- WebAssembly mutable tensor runtime behavior remains unsupported until wwama
+  has a model-backed transfer fixture.
