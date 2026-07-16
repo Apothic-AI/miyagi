@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/miyagi-4.png" alt="Miyagi" width="360">
+</p>
+
 # Miyagi
 
 Miyagi is the Rust port of the reusable Bankai XOR-patch workflow for true
