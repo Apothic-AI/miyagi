@@ -5,7 +5,7 @@
 # Miyagi
 
 Miyagi is the Rust port of the reusable Bankai XOR-patch workflow for true
-binary language models. It uses the sibling [`wwama-bankai`](../wwama-bankai)
+binary language models. It uses the sibling [`wwama`](../wwama)
 crate for GGUF loading, deterministic selected-logit evaluation, Q1_0 row-scale
 inspection, reversible row mutation, and generation.
 
@@ -13,8 +13,8 @@ inspection, reversible row mutation, and generation.
 
 The native CPU path is implemented and validated against the local Bonsai 8B
 Q1_0 fixture. Descriptor-driven architecture discovery also passes against the
-local Bonsai 27B Q1_0 fixture. The wwama backend work has separately passed CPU,
-CUDA, and Vulkan tensor mutation validation. Miyagi mutation is intentionally
+local Bonsai 27B Q1_0 fixture. Miyagi has passed the same mutation/restoration
+check through wwama on CPU, CUDA, and Vulkan. Mutation is intentionally
 native-only until wwama has a runtime WebAssembly transfer fixture.
 
 Miyagi does not modify llama.cpp source files. Model mutation is in-memory and

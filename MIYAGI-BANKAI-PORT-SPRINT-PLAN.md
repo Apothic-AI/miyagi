@@ -3,7 +3,7 @@
 ## Objective
 
 Create a Rust crate named `miyagi` that ports the reusable behavior of Python
-Bankai to Rust and uses the completed `wwama-bankai` workspace as its only model
+Bankai to Rust and uses the canonical sibling `wwama` workspace as its only model
 runtime. Miyagi will own Bankai's patch model, Bonsai/Qwen architecture mapping,
 probe evaluation, fitness policy, search orchestration, CLI, and behavioral
 validation. `wwama` will remain the generic llama.cpp execution and mutable
@@ -24,7 +24,7 @@ Bankai README alone.
 | --- | --- | --- |
 | Miyagi repository | [`README.md`](README.md) is empty and there is no `Cargo.toml` or Rust source. | The crate, module boundaries, dependency policy, tests, and documentation must be established from scratch. |
 | Bankai reusable package | [`bankai/patch.py`](../../python/bankai/bankai/patch.py), [`probes.py`](../../python/bankai/bankai/probes.py), [`search.py`](../../python/bankai/bankai/search.py), and [`cli.py`](../../python/bankai/bankai/cli.py) contain the reusable patch, evaluation, search, and command behavior. | These modules define the primary port surface. The experiment scripts are evidence and validation workflows, not all automatically library APIs. |
-| Bankai backend contract | [`backends/base.py`](../../python/bankai/bankai/backends/base.py) requires model loading, row discovery, row scales, tokenization, selected-token logit gaps, reversible row flips, and optional generation. | `wwama-bankai` now supplies every required primitive. Miyagi should wrap it with model-specific mapping and policy rather than duplicate llama.cpp integration. |
+| Bankai backend contract | [`backends/base.py`](../../python/bankai/bankai/backends/base.py) requires model loading, row discovery, row scales, tokenization, selected-token logit gaps, reversible row flips, and optional generation. | `wwama` now supplies every required primitive. Miyagi should wrap it with model-specific mapping and policy rather than duplicate llama.cpp integration. |
 | Python GGUF backend | [`backends/gguf_backend.py`](../../python/bankai/bankai/backends/gguf_backend.py) leaves row scales and row mutation unimplemented and hard-codes Bonsai layer and row counts. | Python GGUF code is not a parity oracle. Miyagi must use live tensor descriptors and model-backed tests. |
 | Scale weighting | The MLX backend computes each row's weight as the mean absolute value of its block scales. | `wwama::Session::q1_0_row_scales` uses the same mean-absolute aggregation and can drive equivalent candidate weighting. |
 | Search lifecycle | Bankai pre-tokenizes probes, records target/control baselines, screens on the two worst baseline target probes, evaluates full fitness only after screening, accepts strictly improving candidates, and reverts rejected candidates with the same XOR. Accepted flips remain applied when search returns. | Miyagi needs an explicit search state machine and rollback guard so success, rejection, cancellation, and errors leave model state defined. |
@@ -36,11 +36,11 @@ Bankai README alone.
 | Probe token semantics | Bankai selects the last token when a correct or wrong answer string tokenizes to multiple tokens. It does not reject empty or ambiguous answer strings. | Preserve last-token compatibility as an explicit mode, record resolved token IDs, and provide strict validation so accidental multi-token probes are observable. |
 | CLI surface | Bankai exposes `search`, `apply`, `info`, and `eval`. The no-prompt `apply` command mutates an in-memory model and then exits, so it does not persist a useful applied state. | Preserve recognizable commands but do not claim persistence. Applying must be tied to generation/evaluation or another explicit in-process operation. |
 | Research workflows | Experiments cover structured row/layer effects, greedy search, held-out variations, diverse training probes, patch stacking, and generation-based safety evaluation. The first experiments also perform arbitrary bit and entire-layer mutations outside the reusable backend contract. | Port the workflows supported by row XOR and generation. Treat arbitrary bit/group mutation as a separate future backend decision, not a prerequisite for Miyagi. |
-| wwama runtime | [`wwama-bankai/src/lib.rs`](../wwama-bankai/src/lib.rs) exposes mutable model loading, owned tensor descriptors, deterministic selected logits, logit gaps, Q1_0 row scales, row XOR, and generation. | Miyagi can remain safe Rust above wwama's public API and should not use wwama raw FFI. |
+| wwama runtime | [`wwama/src/lib.rs`](../wwama/src/lib.rs) exposes mutable model loading, owned tensor descriptors, deterministic selected logits, logit gaps, Q1_0 row scales, row XOR, and generation. | Miyagi can remain safe Rust above wwama's public API and should not use wwama raw FFI. |
 | Mutable loading | `SessionOptions::mutable_tensors` disables mmap. The completed wwama investigation found mapped writes faulted, while writable CPU, CUDA, and Vulkan loads passed mutation/restoration tests. | Search and patch application must opt into mutable tensors and document the memory/load tradeoff. Read-only inspection can use ordinary loading. |
 | Tensor layout | The local Bonsai 8B Q1_0 fixture reports gate/up tensors as `[4096, 12288]` and down tensors as `[12288, 4096]`; GGML dimension 1 is the logical row. | Architecture mapping must derive row counts and widths from `TensorDescriptor`, not from Bankai constants. |
 | Accelerator behavior | wwama's Bonsai fixture tests passed Q1_0 scale preservation, packed-byte mutation, deterministic logits, and exact double-XOR restoration on CPU, CUDA, and Vulkan. | Miyagi can include all three native paths in its validation matrix without changing llama.cpp. |
-| llama.cpp boundary | `wwama-bankai` implements tensor access through a wwama-owned bridge and made no llama.cpp source changes. | llama.cpp changes are out of scope unless a new reproducible backend failure cannot be fixed at the wwama or Miyagi layer. |
+| llama.cpp boundary | `wwama` implements tensor access through a wwama-owned bridge and made no llama.cpp source changes. | llama.cpp changes are out of scope unless a new reproducible backend failure cannot be fixed at the wwama or Miyagi layer. |
 | WebAssembly boundary | wwama compiles for CPU-only wasm32, but mutable tensor runtime access intentionally returns `UnsupportedTarget`. | Miyagi mutation/search is native-only initially. Do not advertise wasm patching based on compile-only evidence. |
 | Local fixtures | Bonsai 8B Q1_0, Bonsai 8B, and Bonsai 27B Q1_0 GGUF models are available under `/home/bitnom/Models/llm`. | Model-backed tests can use local opt-in fixtures without downloading models or committing model files. |
 
@@ -80,7 +80,7 @@ removal.
 
 ## Ownership and Architecture
 
-### wwama-bankai owns
+### wwama owns
 
 - llama.cpp build and FFI integration;
 - model/session/context lifetimes;
@@ -142,8 +142,8 @@ Keep the trait independent of raw llama.cpp and GGML types.
 **Work**
 
 - Create the Rust library and `miyagi` binary in the existing repository.
-- Depend on the local [`wwama-bankai`](../wwama-bankai) workspace revision that
-  contains commits `2526a3ff` and `b443d53f`.
+- Depend on the local [`wwama`](../wwama) workspace revision containing the
+  synced Bankai tensor backend.
 - Define Miyagi features that forward native backend selection to wwama, with a
   CPU-capable baseline and explicit CUDA/Vulkan options.
 - Add formatting, lint, unit-test, and fixture-test commands.
@@ -428,10 +428,10 @@ Keep the trait independent of raw llama.cpp and GGML types.
 
 ### Dependency integration
 
-Miyagi can initially use `../wwama-bankai` as a path dependency, but that path is
-a task workspace rather than a durable distribution coordinate. Before release
-or canonical monorepo integration, the wwama commits must be available through
-the intended wwama repository revision. Do not copy wwama source into Miyagi.
+Miyagi uses `../wwama` as a local path dependency. Before release or canonical
+monorepo integration, the dependency must be available through the intended
+wwama repository revision or published coordinate. Do not copy wwama source into
+Miyagi.
 
 ### MLX-to-GGUF patch identity
 
@@ -512,7 +512,7 @@ evidence. Do not create a second mutation implementation in Miyagi.
 
 The port is complete when:
 
-1. Miyagi is a tested Rust library and CLI using wwama-bankai through safe APIs.
+1. Miyagi is a tested Rust library and CLI using wwama through safe APIs.
 2. It reads all checked-in Bankai patches and writes canonical v1 patches.
 3. It discovers Bonsai/Qwen tensor mappings from live descriptors without
    hard-coded 8B dimensions or layer count.
@@ -532,7 +532,7 @@ The port is complete when:
 
 ## First Implementation Slice
 
-1. Create the crate and pin the local wwama-bankai dependency.
+1. Create the crate and pin the local wwama dependency.
 2. Implement typed projection and Bonsai/Qwen architecture discovery.
 3. Wrap wwama in a testable Miyagi backend and prove one reversible candidate
    trial on the local 8B Q1_0 model.
@@ -563,14 +563,19 @@ The planned native port is implemented in this workspace.
 | Vulkan model | Passed | Miyagi fixture test passed with all 37 layers on Vulkan0 on the RTX 4050. |
 | wasm32 compilation | Passed | CPU-only `wasm32-unknown-unknown` check passes; mutable runtime remains capability-gated by wwama. |
 | llama.cpp changes | Not required | No llama.cpp source file was changed. |
+| Cross-format patch smoke | Bounded | All three checked-in MLX-origin Bankai patches applied and restored on Bonsai 8B GGUF; probe effects were mixed, so parity remains unproven. |
+| Stacking and generation smoke | Passed | Two patches composed into a 144-flip artifact; evaluation and one patched-generation comparison both restored model state. |
+| Dataset regression smoke | Bounded | The checked-in two-case fixture ran through `benchmark`; baseline was `2/2`, patched was `1/2`, and restoration was confirmed. |
 
 ### Remaining evidence boundaries
 
 - Bankai patches trained against MLX are structurally importable into GGUF, and
-  `calculus_v1` was evaluated through Miyagi, but cross-format behavioral parity
-  is not claimed without a controlled conversion comparison.
-- Full generalization and safety experiments are available through custom probe
-  files and the dataset benchmark command; their scientific outcomes remain
-  model- and dataset-dependent rather than being hard-coded into the crate.
+  all three checked-in patches were evaluated through Miyagi. Their observed
+  probe effects were mixed, so cross-format behavioral parity is not claimed
+  without a controlled conversion comparison.
+- A bounded stacking, generation, and dataset regression smoke suite is
+  recorded in the progress document. Broad generalization and safety claims
+  still require user-selected models and datasets; they are not hard-coded into
+  the crate.
 - WebAssembly mutable tensor runtime behavior remains unsupported until wwama
   has a model-backed transfer fixture.
