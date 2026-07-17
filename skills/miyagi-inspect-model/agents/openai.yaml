@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inspect Miyagi Model"
+  short_description: "Check GGUF architecture and Miyagi support"
+  default_prompt: "Use $miyagi-inspect-model to inspect this GGUF model and report whether Miyagi supports it."

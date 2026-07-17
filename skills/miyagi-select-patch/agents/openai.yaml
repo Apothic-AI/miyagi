@@ -1,0 +1,4 @@
+interface:
+  display_name: "Select Miyagi Patch"
+  short_description: "Choose the smallest effective candidate patch"
+  default_prompt: "Use $miyagi-select-patch to compare these candidate patches and choose the best-supported one."

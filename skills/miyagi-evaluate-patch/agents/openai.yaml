@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evaluate Miyagi Patch"
+  short_description: "Inspect patch effects and compare generation"
+  default_prompt: "Use $miyagi-evaluate-patch to validate this patch and measure its effect on the model."

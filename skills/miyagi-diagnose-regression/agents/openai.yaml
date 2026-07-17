@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnose Miyagi Regression"
+  short_description: "Explain target gains and collateral regressions"
+  default_prompt: "Use $miyagi-diagnose-regression to explain this patch regression across targets and controls."

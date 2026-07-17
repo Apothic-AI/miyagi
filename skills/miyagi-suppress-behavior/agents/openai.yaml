@@ -1,0 +1,4 @@
+interface:
+  display_name: "Suppress Miyagi Behavior"
+  short_description: "Reduce unwanted behavior with evidence"
+  default_prompt: "Use $miyagi-suppress-behavior to reduce this unwanted behavior while checking preservation controls."

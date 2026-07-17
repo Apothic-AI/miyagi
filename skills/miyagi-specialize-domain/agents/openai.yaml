@@ -1,0 +1,4 @@
+interface:
+  display_name: "Specialize Miyagi Domain"
+  short_description: "Build domain behavior with adjacent controls"
+  default_prompt: "Use $miyagi-specialize-domain to adapt this model for the supplied domain and evaluate collateral effects."

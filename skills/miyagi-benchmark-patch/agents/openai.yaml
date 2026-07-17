@@ -1,0 +1,4 @@
+interface:
+  display_name: "Benchmark Miyagi Patch"
+  short_description: "Compare baseline and patched dataset accuracy"
+  default_prompt: "Use $miyagi-benchmark-patch to benchmark this patch against the provided dataset."

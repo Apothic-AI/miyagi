@@ -1,0 +1,4 @@
+interface:
+  display_name: "Author Miyagi Probes"
+  short_description: "Create validated target and control probe sets"
+  default_prompt: "Use $miyagi-author-probes to create a custom Miyagi probe set for this behavior."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Compose Miyagi Patches"
+  short_description: "Combine XOR patches and validate the artifact"
+  default_prompt: "Use $miyagi-compose-patches to compose these Miyagi patches and check the result."

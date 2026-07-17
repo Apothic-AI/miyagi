@@ -1,0 +1,4 @@
+interface:
+  display_name: "Preserve Miyagi Capabilities"
+  short_description: "Optimize targets while protecting controls"
+  default_prompt: "Use $miyagi-preserve-capabilities to optimize this target while protecting the supplied capabilities."

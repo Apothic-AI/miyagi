@@ -1,0 +1,4 @@
+interface:
+  display_name: "Search Miyagi Patch"
+  short_description: "Run deterministic patch search with checkpoints"
+  default_prompt: "Use $miyagi-search-patch to search for a controlled Miyagi patch for this target behavior."

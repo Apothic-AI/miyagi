@@ -1,0 +1,4 @@
+interface:
+  display_name: "Inject Knowledge with Miyagi"
+  short_description: "Adapt a model to a verified fact ledger"
+  default_prompt: "Use $miyagi-inject-knowledge to adapt this model to the supplied verified facts."

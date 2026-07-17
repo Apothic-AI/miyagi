@@ -1,0 +1,4 @@
+interface:
+  display_name: "Correct Factual Errors"
+  short_description: "Repair known answers with collateral checks"
+  default_prompt: "Use $miyagi-correct-errors to repair these known model errors and test nearby facts."

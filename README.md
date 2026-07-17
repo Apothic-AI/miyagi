@@ -35,6 +35,47 @@ inspect model -> define targets and controls -> search or load a patch
 A positive target score is only evidence for the probes that were measured. It
 does not prove broad knowledge, safety, generalization, or cross-format parity.
 
+## Agent Skills
+
+The [`skills/`](skills/) directory provides reusable Codex workflows for
+operating Miyagi. Each skill includes focused instructions, agent metadata, and
+supporting references where the workflow needs a schema, checklist, or report
+format.
+
+### Core workflows
+
+- [Inspect a model](skills/miyagi-inspect-model/SKILL.md): verify architecture,
+  Q1_0 tensor support, dimensions, placement, and model signature.
+- [Author probes](skills/miyagi-author-probes/SKILL.md): create auditable target,
+  control, and held-out probe files with explicit token semantics.
+- [Evaluate a patch](skills/miyagi-evaluate-patch/SKILL.md): validate an artifact
+  and compare baseline versus patched probes and generation.
+- [Search for a patch](skills/miyagi-search-patch/SKILL.md): run deterministic,
+  checkpointed search with explicit targets and preservation controls.
+- [Compose patches](skills/miyagi-compose-patches/SKILL.md): combine row-XOR
+  patches using symmetric-difference semantics and validate the result.
+- [Benchmark a patch](skills/miyagi-benchmark-patch/SKILL.md): measure baseline
+  and patched generation on JSON or JSONL datasets.
+
+### Adaptation and validation goals
+
+- [Inject verified knowledge](skills/miyagi-inject-knowledge/SKILL.md): adapt from
+  a sourced fact ledger without inventing answers or provenance.
+- [Correct known errors](skills/miyagi-correct-errors/SKILL.md): repair observed
+  factual or completion errors while testing nearby behavior.
+- [Preserve capabilities](skills/miyagi-preserve-capabilities/SKILL.md): define
+  and enforce regression gates around a target adaptation.
+- [Test generalization](skills/miyagi-test-generalization/SKILL.md): measure
+  transfer to paraphrases, held-out facts, contexts, and datasets.
+- [Diagnose regressions](skills/miyagi-diagnose-regression/SKILL.md): isolate
+  target gains, control losses, patch interactions, and failing gates.
+- [Specialize a domain](skills/miyagi-specialize-domain/SKILL.md): design a
+  bounded domain adaptation with adjacent-domain and general controls.
+- [Suppress unwanted behavior](skills/miyagi-suppress-behavior/SKILL.md): reduce
+  a measured response tendency while defining a replacement behavior.
+- [Select a patch](skills/miyagi-select-patch/SKILL.md): compare candidates under
+  common evidence gates and choose the smallest or safest passing artifact.
+
 ## Requirements
 
 - A Rust toolchain compatible with edition 2024.
@@ -250,7 +291,7 @@ Custom probe files are JSON arrays:
 
 Probe names must be unique. Keep leading whitespace in answer strings when it is
 part of the tokenizer behavior. Use separate files for target, control, and
-held-out probes. See the repository-local [probe authoring skill](skills/miyagi-author-probes/SKILL.md)
+held-out probes. See the [probe authoring skill](skills/miyagi-author-probes/SKILL.md)
 for validation guidance.
 
 Built-in selectors are `math`, `code`, and `knowledge`. Any selector that is

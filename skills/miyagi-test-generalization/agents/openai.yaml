@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Miyagi Generalization"
+  short_description: "Measure held-out and paraphrase transfer"
+  default_prompt: "Use $miyagi-test-generalization to test whether this adaptation transfers beyond its training probes."
