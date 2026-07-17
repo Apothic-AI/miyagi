@@ -1,4 +1,4 @@
-![Miyagi](https://github.com/Apothic-AI/miyagi/blob/master/assets/miyagi-4.png?raw=true)
+![Miyagi](https://github.com/Apothic-AI/miyagi/blob/master/assets/miyagi-logo.png?raw=true)
 
 # Miyagi
 
