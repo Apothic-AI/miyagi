@@ -397,3 +397,7 @@ cargo test --no-default-features --test model_backend
   held-out tests.
 
 Miyagi does not modify llama.cpp source files.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
