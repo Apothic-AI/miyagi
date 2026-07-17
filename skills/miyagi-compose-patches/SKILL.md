@@ -1,6 +1,6 @@
 ---
 name: miyagi-compose-patches
-description: Compose two or more Miyagi or Bankai row-XOR patch JSON files into one canonical patch using XOR symmetric-difference semantics, then inspect and live-validate the result. Use for patch stacking, conflict cancellation analysis, or producing a combined patch artifact.
+description: Compose two or more Miyagi row-XOR patch JSON files into one canonical patch using XOR symmetric-difference semantics, then inspect and live-validate the result. Use for patch stacking, conflict cancellation analysis, or producing a combined patch artifact.
 ---
 
 # Compose Miyagi Patches

@@ -15,7 +15,7 @@ resuming a model-backed search.
 2. Create target and control probes with `$miyagi-author-probes`. Reserve held-
    out probes that search will not optimize.
 3. Choose existing layers and projections explicitly. Do not rely on the
-   Bankai defaults `[1,2,3,4,34]` when the inspected architecture differs.
+   default layers `[1,2,3,4,34]` when the inspected architecture differs.
 4. Choose `mean` fitness for average target improvement or `min` to optimize the
    worst target improvement. Keep the control penalty finite and non-negative.
 5. Start with a bounded iteration count and a checkpoint path.

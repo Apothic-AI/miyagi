@@ -26,7 +26,7 @@ fn synthetic_architecture() -> ArchitectureMap {
 }
 
 #[test]
-fn all_checked_in_bankai_patches_parse_and_validate() {
+fn all_checked_in_patches_parse_and_validate() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let architecture = synthetic_architecture();
     for name in [
@@ -34,7 +34,7 @@ fn all_checked_in_bankai_patches_parse_and_validate() {
         "calculus_v1.json",
         "calculus_generalized_v1.json",
     ] {
-        let path = root.join("../../python/bankai/patches").join(name);
+        let path = root.join("patches").join(name);
         let patch = Patch::load(path).unwrap();
         let validated = patch
             .validate(
@@ -44,7 +44,7 @@ fn all_checked_in_bankai_patches_parse_and_validate() {
                 },
             )
             .unwrap();
-        assert_eq!(validated.patch().format, "bankai_row_xor_v1");
+        assert_eq!(validated.patch().format, "miyagi_row_xor_v1");
         assert!(!validated.patch().flips.is_empty());
     }
 }

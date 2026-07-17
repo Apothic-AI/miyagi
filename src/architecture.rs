@@ -19,7 +19,7 @@ pub enum Projection {
 impl Projection {
     pub const ALL: [Self; 3] = [Self::Gate, Self::Up, Self::Down];
 
-    pub const fn bankai_name(self) -> &'static str {
+    pub const fn projection_name(self) -> &'static str {
         match self {
             Self::Gate => "gate_proj",
             Self::Up => "up_proj",
@@ -38,7 +38,7 @@ impl Projection {
 
 impl fmt::Display for Projection {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(self.bankai_name())
+        formatter.write_str(self.projection_name())
     }
 }
 
@@ -60,7 +60,7 @@ impl Serialize for Projection {
     where
         S: Serializer,
     {
-        serializer.serialize_str(self.bankai_name())
+        serializer.serialize_str(self.projection_name())
     }
 }
 

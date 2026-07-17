@@ -7,6 +7,8 @@ models. It discovers supported Qwen/Bonsai Q1_0 tensors, evaluates selected
 token preferences, searches for reversible row-level patches, and measures the
 result against probes or generation datasets.
 
+Miyagi is inspired by [nikshepsvn/bankai](https://github.com/nikshepsvn/bankai).
+
 Miyagi is built on the sibling [`wwama`](../wwama) crate. `wwama` owns GGUF
 loading, tokenization, inference, generation, tensor descriptors, backend
 transfers, and validated Q1_0 row mutation. Miyagi owns the patch format,
@@ -126,14 +128,14 @@ Read a patch without loading a model:
 
 ```sh
 cargo run --release --no-default-features -- --json info \
-  --patch ../../python/bankai/patches/calculus_v1.json
+  --patch patches/calculus_v1.json
 ```
 
 Validate coordinates and architecture identity against a live model:
 
 ```sh
 cargo run --release --no-default-features -- --json info \
-  --patch ../../python/bankai/patches/calculus_v1.json \
+  --patch patches/calculus_v1.json \
   --model "$MODEL" \
   --n-gpu-layers 0
 ```
@@ -150,7 +152,7 @@ Evaluate a patch against built-in math, code, and knowledge probes:
 cargo run --release --no-default-features -- --json eval \
   --model "$MODEL" \
   --n-gpu-layers 0 \
-  --patch ../../python/bankai/patches/calculus_v1.json \
+  --patch patches/calculus_v1.json \
   --probes math,code,knowledge \
   --token-mode compatibility \
   --report calculus-evaluation.json
@@ -159,8 +161,8 @@ cargo run --release --no-default-features -- --json eval \
 `eval` measures baseline and patched gaps in one writable session, removes the
 patch before successful exit, and reports per-probe deltas and sign transitions.
 Use `--token-mode strict` for new probe sets when every answer must be exactly
-one token. Compatibility mode preserves Bankai's final-token behavior for
-multi-token answer strings.
+one token. Compatibility mode preserves final-token behavior for multi-token
+answer strings.
 
 ### 4. Compare generation
 
@@ -170,7 +172,7 @@ Compare deterministic generation without and with a patch:
 cargo run --release --no-default-features -- --json apply \
   --model "$MODEL" \
   --n-gpu-layers 0 \
-  --patch ../../python/bankai/patches/calculus_v1.json \
+  --patch patches/calculus_v1.json \
   --prompt 'Explain why 7 * 8 equals 56.' \
   --max-tokens 120 \
   --seed 42
@@ -185,7 +187,7 @@ Search uses scale-weighted candidate sampling, two-probe screening, deterministi
 SplitMix64 sampling, control-penalized fitness, strict-improvement acceptance,
 and XOR rollback for rejected candidates.
 
-Use explicit layers rather than assuming the Bankai defaults fit every model:
+Use explicit layers rather than assuming default layers fit every model:
 
 ```sh
 cargo run --release --no-default-features -- search \
@@ -299,12 +301,12 @@ not one of those names is treated as a JSON probe-file path.
 
 ## Patch Format
 
-Miyagi writes the canonical `bankai_row_xor_v1` schema:
+Miyagi writes the canonical `miyagi_row_xor_v1` schema:
 
 ```json
 {
   "version": 1,
-  "format": "bankai_row_xor_v1",
+  "format": "miyagi_row_xor_v1",
   "name": "example",
   "description": "Sparse row adaptation",
   "base_model": "model.gguf",
@@ -320,7 +322,7 @@ Miyagi writes the canonical `bankai_row_xor_v1` schema:
 }
 ```
 
-The reader also accepts Bankai's legacy `type: "row_flip"` field. Patch
+The reader also accepts the alternate `type: "row_flip"` field. Patch
 validation checks version, format, projection, duplicate coordinates, row
 bounds, Q1_0 support, and architecture signature. Logical bit counts come from
 the live tensor width, not a hard-coded projection size.

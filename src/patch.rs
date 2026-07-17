@@ -11,7 +11,7 @@ use crate::backend::MiyagiBackend;
 use crate::error::{Error, Result};
 
 pub const PATCH_VERSION: u32 = 1;
-pub const PATCH_FORMAT: &str = "bankai_row_xor_v1";
+pub const PATCH_FORMAT: &str = "miyagi_row_xor_v1";
 
 #[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PatchFlip {
@@ -351,7 +351,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reads_legacy_schema_and_emits_canonical_format() {
+    fn reads_alternate_schema_and_emits_canonical_format() {
         let patch = Patch::from_json_str(
             r#"{
                 "version": 1,
@@ -364,7 +364,7 @@ mod tests {
         assert_eq!(patch.format, PATCH_FORMAT);
         assert_eq!(patch.name, "unnamed");
         let output = String::from_utf8(patch.to_pretty_json().unwrap()).unwrap();
-        assert!(output.contains("\"format\": \"bankai_row_xor_v1\""));
+        assert!(output.contains("\"format\": \"miyagi_row_xor_v1\""));
         assert!(!output.contains("\"type\""));
     }
 

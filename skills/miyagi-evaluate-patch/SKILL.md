@@ -1,6 +1,6 @@
 ---
 name: miyagi-evaluate-patch
-description: Inspect and validate a Miyagi or Bankai row-XOR patch, measure its effects on built-in or custom probes, and compare deterministic baseline versus patched generation. Use for patch review, compatibility checks, regression analysis, generation examples, or diagnosing model-signature and coordinate failures.
+description: Inspect and validate a Miyagi row-XOR patch, measure its effects on built-in or custom probes, and compare deterministic baseline versus patched generation. Use for patch review, compatibility checks, regression analysis, generation examples, or diagnosing model-signature and coordinate failures.
 ---
 
 # Evaluate a Miyagi Patch

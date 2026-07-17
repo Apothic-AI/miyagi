@@ -100,7 +100,7 @@ mod tests {
     }
 
     #[test]
-    fn mean_fitness_matches_bankai_formula() {
+    fn mean_fitness_matches_documented_formula() {
         let target_base = [measurement("a", 1.0), measurement("b", -1.0)];
         let target = [measurement("a", 2.0), measurement("b", 1.0)];
         let control_base = [measurement("c", 3.0), measurement("d", 2.0)];

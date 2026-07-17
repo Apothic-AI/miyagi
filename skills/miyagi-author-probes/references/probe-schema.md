@@ -29,8 +29,8 @@ auditable.
 - `compatibility`: tokenize each answer string and select its final token ID.
 - `strict`: require each answer string to tokenize to exactly one token.
 
-Strict mode catches accidental ambiguity. Compatibility mode preserves Bankai
-behavior but can hide differences in answer prefixes. Keep leading whitespace
+Strict mode catches accidental ambiguity. Compatibility mode preserves
+final-token behavior but can hide differences in answer prefixes. Keep leading whitespace
 intentional because it can change tokenization.
 
 ## Structural checks
@@ -59,7 +59,7 @@ without changing model rows:
 ```json
 {
   "version": 1,
-  "format": "bankai_row_xor_v1",
+  "format": "miyagi_row_xor_v1",
   "name": "probe-validation-noop",
   "description": "No-op patch used to validate probes",
   "base_model": "validation-only",
