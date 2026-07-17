@@ -1,9 +1,10 @@
 [package]
 name = "miyagi"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Sparse XOR adaptation and search for true binary GGUF language models"
 readme = "README.md"
+repository = "https://github.com/Apothic-AI/miyagi"
 license = "Apache-2.0"
 
 [dependencies]
@@ -12,7 +13,7 @@ regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
-wwama = { version = "0.2.3", path = "../wwama", default-features = false, features = ["std"] }
+wwama = { version = "=0.2.4", path = "../wwama", default-features = false, features = ["std"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 ctrlc = "3.4"
