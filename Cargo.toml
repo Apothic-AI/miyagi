@@ -1,6 +1,6 @@
 [package]
 name = "miyagi"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Sparse XOR adaptation and search for true binary GGUF language models"
 readme = "README.md"

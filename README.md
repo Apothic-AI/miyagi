@@ -7,8 +7,6 @@ models. It discovers supported Qwen/Bonsai Q1_0 tensors, evaluates selected
 token preferences, searches for reversible row-level patches, and measures the
 result against probes or generation datasets.
 
-Miyagi is inspired by [nikshepsvn/bankai](https://github.com/nikshepsvn/bankai).
-
 Miyagi is built on the sibling [`wwama`](../wwama) crate. `wwama` owns GGUF
 loading, tokenization, inference, generation, tensor descriptors, backend
 transfers, and validated Q1_0 row mutation. Miyagi owns the patch format,
@@ -399,6 +397,8 @@ cargo test --no-default-features --test model_backend
   held-out tests.
 
 Miyagi does not modify llama.cpp source files.
+
+Miyagi is inspired by [nikshepsvn/bankai](https://github.com/nikshepsvn/bankai).
 
 ## License
 
