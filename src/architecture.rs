@@ -308,4 +308,34 @@ mod tests {
             "\"down_proj\""
         );
     }
+
+    #[test]
+    fn architecture_map_json_serializes_tensors_as_array() {
+        let mut descriptors = Vec::new();
+        for layer in 0..2 {
+            descriptors.push(descriptor(
+                &format!("blk.{layer}.ffn_gate.weight"),
+                4096,
+                12288,
+            ));
+            descriptors.push(descriptor(
+                &format!("blk.{layer}.ffn_up.weight"),
+                4096,
+                12288,
+            ));
+            descriptors.push(descriptor(
+                &format!("blk.{layer}.ffn_down.weight"),
+                12288,
+                4096,
+            ));
+        }
+        let map = ArchitectureMap::discover(&descriptors).unwrap();
+        let value = serde_json::to_value(&map).expect("JSON serialize must not fail on tuple keys");
+        let tensors = value
+            .get("tensors")
+            .and_then(|t| t.as_array())
+            .expect("tensors must serialize as a JSON array");
+        assert_eq!(tensors.len(), 6);
+        assert!(tensors.iter().all(|t| t.get("layer").is_some() && t.get("projection").is_some()));
+    }
 }
