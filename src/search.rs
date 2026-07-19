@@ -33,7 +33,10 @@ pub struct SearchConfig {
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
-            search_layers: vec![1, 2, 3, 4, 34],
+            // Serde fallback only. The real CLI default is computed from the
+            // model's layer count via `default_search_layers` — a fixed
+            // absolute list cannot scale across model sizes.
+            search_layers: default_search_layers(36),
             search_projections: vec![Projection::Gate, Projection::Up],
             max_iters: 200,
             control_penalty: 2.0,
@@ -45,6 +48,35 @@ impl Default for SearchConfig {
             base_model: "unknown".to_owned(),
         }
     }
+}
+
+/// Upper bound on how many layers the computed default samples.
+const MAX_DEFAULT_LAYERS: usize = 12;
+
+/// Evenly spaced layer indices spanning the model's full depth, used when the
+/// caller does not pass `--layers`.
+///
+/// A fixed absolute list (the old `[1, 2, 3, 4, 34]`) silently under-searches
+/// any model deeper than the 8B it was tuned for — e.g. on a 64-layer model it
+/// never samples past layer 34, capping results with no warning. Instead we
+/// sample up to `MAX_DEFAULT_LAYERS` points across `1..=layer_count-1` (skipping
+/// the embedding-adjacent layer 0), guaranteeing deep-layer coverage at any
+/// scale. Small models (≤ `MAX_DEFAULT_LAYERS` layers) search every layer.
+pub fn default_search_layers(layer_count: usize) -> Vec<usize> {
+    if layer_count == 0 {
+        return Vec::new();
+    }
+    if layer_count <= MAX_DEFAULT_LAYERS {
+        return (0..layer_count).collect();
+    }
+    let last = layer_count - 1;
+    let span = last - 1; // spread across [1, last]
+    let steps = MAX_DEFAULT_LAYERS - 1;
+    let mut layers: Vec<usize> = (0..MAX_DEFAULT_LAYERS)
+        .map(|i| 1 + (span * i + steps / 2) / steps) // integer round
+        .collect();
+    layers.dedup();
+    layers
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -173,6 +205,10 @@ where
 
     let fresh_target_baseline = measure_probes(backend, target_probes)?;
     let fresh_control_baseline = measure_probes(backend, control_probes)?;
+    // The baseline is measured on the unpatched model; a non-finite gap here
+    // is a broken probe/model, not a rejectable candidate, so fail loudly.
+    ensure_finite_baseline(&fresh_target_baseline)?;
+    ensure_finite_baseline(&fresh_control_baseline)?;
     let architecture_signature = backend.architecture().signature().to_owned();
     let model_label = backend.model_label().to_owned();
 
@@ -436,6 +472,18 @@ fn evaluate_candidate<B: MiyagiBackend>(
         })
         .collect::<Vec<_>>();
     let control = measure_probes(backend, control_probes)?;
+    // A patched row can push a probe's logits outside the FP range, yielding a
+    // non-finite gap. That is a property of this one candidate, not a fatal
+    // search error — return NaN fitness so the caller reverts and rejects it
+    // (NaN fails the `fitness > current_fitness` accept test) instead of
+    // aborting the whole run.
+    if target
+        .iter()
+        .chain(control.iter())
+        .any(|measurement| !measurement.gap.is_finite())
+    {
+        return Ok(CandidateEvaluation::Measured { fitness: f32::NAN });
+    }
     let fitness = compute_fitness(
         config.fitness_mode,
         &target,
@@ -556,6 +604,18 @@ fn sample_candidate<'a>(
         threshold -= candidate.weight;
     }
     available.last().copied()
+}
+
+fn ensure_finite_baseline(measurements: &[ProbeMeasurement]) -> Result<()> {
+    for measurement in measurements {
+        if !measurement.gap.is_finite() {
+            return Err(Error::MeasurementMismatch(format!(
+                "baseline probe {} produced non-finite gap {}",
+                measurement.name, measurement.gap
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn screen_indices(baseline: &[ProbeMeasurement], count: usize) -> Vec<usize> {
@@ -725,6 +785,25 @@ mod tests {
         let expected = first.next_u64();
         let mut resumed = SplitMix64::from_state(state);
         assert_eq!(resumed.next_u64(), expected);
+    }
+
+    #[test]
+    fn default_layers_span_full_depth_on_large_models() {
+        // 64-layer model must reach deep layers, unlike the old fixed list.
+        let layers = default_search_layers(64);
+        assert_eq!(layers.len(), MAX_DEFAULT_LAYERS);
+        assert_eq!(*layers.first().unwrap(), 1);
+        assert_eq!(*layers.last().unwrap(), 63);
+        assert!(layers.iter().all(|&l| l < 64));
+        assert!(layers.windows(2).all(|w| w[0] < w[1]), "strictly increasing");
+        // The old default's deepest layer was 34; the new one goes well past it.
+        assert!(layers.iter().any(|&l| l > 34));
+    }
+
+    #[test]
+    fn default_layers_cover_every_layer_on_small_models() {
+        assert_eq!(default_search_layers(4), vec![0, 1, 2, 3]);
+        assert_eq!(default_search_layers(0), Vec::<usize>::new());
     }
 
     #[test]

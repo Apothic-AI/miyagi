@@ -102,17 +102,16 @@ pub fn measure_probes<B: MiyagiBackend>(
     probes
         .iter()
         .map(|compiled| {
+            // A patched row can drive logits outside the FP range, yielding a
+            // non-finite gap. This primitive returns it as data — callers decide
+            // what a NaN means. During search a NaN candidate is reverted and
+            // rejected (see `evaluate_candidate`); the baseline path guards
+            // against a non-finite baseline explicitly.
             let gap = backend.logit_gap(
                 &compiled.prompt_tokens,
                 compiled.correct_id,
                 compiled.wrong_id,
             )?;
-            if !gap.is_finite() {
-                return Err(Error::MeasurementMismatch(format!(
-                    "probe {} produced non-finite gap {gap}",
-                    compiled.probe.name
-                )));
-            }
             Ok(ProbeMeasurement {
                 name: compiled.probe.name.clone(),
                 category: compiled.probe.category.clone(),
