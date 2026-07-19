@@ -11,7 +11,9 @@ use crate::backend::MiyagiBackend;
 use crate::error::{Error, Result};
 use crate::fitness::{FitnessMode, compute_fitness};
 use crate::patch::{Patch, PatchFlip};
-use crate::probe::{CompiledProbe, ProbeMeasurement, measure_probes};
+use crate::probe::{
+    CompiledProbe, ProbeMeasurement, measure_probes, measure_probes_allowing_non_finite,
+};
 
 const CHECKPOINT_VERSION: u32 = 1;
 
@@ -33,10 +35,10 @@ pub struct SearchConfig {
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
-            // Serde fallback only. The real CLI default is computed from the
-            // model's layer count via `default_search_layers` — a fixed
-            // absolute list cannot scale across model sizes.
-            search_layers: default_search_layers(36),
+            // Empty means "resolve from the live backend in run_search via
+            // default_search_layers(layer_count)". Do not bake a fixed layer
+            // count here — that reintroduces 8B-era under-search on larger models.
+            search_layers: Vec::new(),
             search_projections: vec![Projection::Gate, Projection::Up],
             max_iters: 200,
             control_penalty: 2.0,
@@ -54,14 +56,16 @@ impl Default for SearchConfig {
 const MAX_DEFAULT_LAYERS: usize = 12;
 
 /// Evenly spaced layer indices spanning the model's full depth, used when the
-/// caller does not pass `--layers`.
+/// caller does not pass `--layers` (or leaves `SearchConfig.search_layers` empty).
 ///
 /// A fixed absolute list (the old `[1, 2, 3, 4, 34]`) silently under-searches
 /// any model deeper than the 8B it was tuned for — e.g. on a 64-layer model it
-/// never samples past layer 34, capping results with no warning. Instead we
-/// sample up to `MAX_DEFAULT_LAYERS` points across `1..=layer_count-1` (skipping
-/// the embedding-adjacent layer 0), guaranteeing deep-layer coverage at any
-/// scale. Small models (≤ `MAX_DEFAULT_LAYERS` layers) search every layer.
+/// never samples past layer 34, capping results with no warning.
+///
+/// - **Large models** (`layer_count > MAX_DEFAULT_LAYERS`): up to
+///   `MAX_DEFAULT_LAYERS` points across `1..=layer_count-1` (skips layer 0).
+/// - **Small models** (`layer_count ≤ MAX_DEFAULT_LAYERS`): every layer index
+///   in `0..layer_count` (includes layer 0).
 pub fn default_search_layers(layer_count: usize) -> Vec<usize> {
     if layer_count == 0 {
         return Vec::new();
@@ -77,6 +81,15 @@ pub fn default_search_layers(layer_count: usize) -> Vec<usize> {
         .collect();
     layers.dedup();
     layers
+}
+
+/// Fill empty `search_layers` from the live backend architecture.
+pub fn resolve_search_layers(layer_count: usize, search_layers: &[usize]) -> Vec<usize> {
+    if search_layers.is_empty() {
+        default_search_layers(layer_count)
+    } else {
+        search_layers.to_vec()
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -197,18 +210,21 @@ where
     B: MiyagiBackend,
     F: FnMut(&SearchEvent),
 {
+    let mut config = config;
+    config.search_layers = resolve_search_layers(
+        backend.architecture().layer_count(),
+        &config.search_layers,
+    );
     validate_config(backend, target_probes, control_probes, &config)?;
     let candidates = build_candidates(backend, &config)?;
     if candidates.is_empty() {
         return Err(Error::InvalidSearch("candidate pool is empty".to_owned()));
     }
 
+    // Baselines must be finite (strict measure_probes). Candidate flips may
+    // produce NaN — those use measure_probes_allowing_non_finite below.
     let fresh_target_baseline = measure_probes(backend, target_probes)?;
     let fresh_control_baseline = measure_probes(backend, control_probes)?;
-    // The baseline is measured on the unpatched model; a non-finite gap here
-    // is a broken probe/model, not a rejectable candidate, so fail loudly.
-    ensure_finite_baseline(&fresh_target_baseline)?;
-    ensure_finite_baseline(&fresh_control_baseline)?;
     let architecture_signature = backend.architecture().signature().to_owned();
     let model_label = backend.model_label().to_owned();
 
@@ -441,11 +457,12 @@ fn evaluate_candidate<B: MiyagiBackend>(
         .iter()
         .map(|index| target_probes[*index].clone())
         .collect::<Vec<_>>();
-    let screen_measurements = measure_probes(backend, &screen_probes)?;
+    // Candidate path: allow non-finite gaps (reject this flip, keep searching).
+    let screen_measurements = measure_probes_allowing_non_finite(backend, &screen_probes)?;
     if !screen_measurements.iter().any(|measurement| {
-        baseline_by_name
-            .get(&measurement.name)
-            .is_some_and(|baseline| measurement.gap > *baseline)
+        baseline_by_name.get(&measurement.name).is_some_and(|baseline| {
+            measurement.gap.is_finite() && measurement.gap > *baseline
+        })
     }) {
         return Ok(CandidateEvaluation::ScreenedOut);
     }
@@ -457,7 +474,7 @@ fn evaluate_candidate<B: MiyagiBackend>(
         .collect::<BTreeMap<_, _>>();
     for (index, probe) in target_probes.iter().enumerate() {
         if let std::collections::btree_map::Entry::Vacant(entry) = measured_by_index.entry(index) {
-            let measurement = measure_probes(backend, std::slice::from_ref(probe))?
+            let measurement = measure_probes_allowing_non_finite(backend, std::slice::from_ref(probe))?
                 .into_iter()
                 .next()
                 .expect("one probe returns one measurement");
@@ -471,12 +488,8 @@ fn evaluate_candidate<B: MiyagiBackend>(
                 .expect("every target probe was measured")
         })
         .collect::<Vec<_>>();
-    let control = measure_probes(backend, control_probes)?;
-    // A patched row can push a probe's logits outside the FP range, yielding a
-    // non-finite gap. That is a property of this one candidate, not a fatal
-    // search error — return NaN fitness so the caller reverts and rejects it
-    // (NaN fails the `fitness > current_fitness` accept test) instead of
-    // aborting the whole run.
+    let control = measure_probes_allowing_non_finite(backend, control_probes)?;
+    // Non-finite candidate gap → reject this flip only (NaN fails fitness >).
     if target
         .iter()
         .chain(control.iter())
@@ -604,18 +617,6 @@ fn sample_candidate<'a>(
         threshold -= candidate.weight;
     }
     available.last().copied()
-}
-
-fn ensure_finite_baseline(measurements: &[ProbeMeasurement]) -> Result<()> {
-    for measurement in measurements {
-        if !measurement.gap.is_finite() {
-            return Err(Error::MeasurementMismatch(format!(
-                "baseline probe {} produced non-finite gap {}",
-                measurement.name, measurement.gap
-            )));
-        }
-    }
-    Ok(())
 }
 
 fn screen_indices(baseline: &[ProbeMeasurement], count: usize) -> Vec<usize> {
@@ -802,8 +803,18 @@ mod tests {
 
     #[test]
     fn default_layers_cover_every_layer_on_small_models() {
+        // Small models intentionally include layer 0 (see default_search_layers docs).
         assert_eq!(default_search_layers(4), vec![0, 1, 2, 3]);
         assert_eq!(default_search_layers(0), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn empty_search_layers_resolve_from_backend_depth() {
+        let resolved = resolve_search_layers(64, &[]);
+        assert_eq!(resolved, default_search_layers(64));
+        assert!(resolved.iter().any(|&l| l > 34));
+        let explicit = resolve_search_layers(64, &[1, 2, 3]);
+        assert_eq!(explicit, vec![1, 2, 3]);
     }
 
     #[test]

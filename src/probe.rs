@@ -92,7 +92,29 @@ pub fn compile_probes<B: MiyagiBackend>(
         .collect()
 }
 
+/// Measure probe logit gaps. Non-finite gaps are a hard error — used by `eval`
+/// and search baselines so reports never contain silent NaN transitions.
 pub fn measure_probes<B: MiyagiBackend>(
+    backend: &mut B,
+    probes: &[CompiledProbe],
+) -> Result<Vec<ProbeMeasurement>> {
+    let measurements = measure_probes_allowing_non_finite(backend, probes)?;
+    for measurement in &measurements {
+        if !measurement.gap.is_finite() {
+            return Err(Error::MeasurementMismatch(format!(
+                "probe {} produced non-finite gap {}",
+                measurement.name, measurement.gap
+            )));
+        }
+    }
+    Ok(measurements)
+}
+
+/// Like [`measure_probes`], but returns non-finite gaps as data.
+///
+/// Search candidate evaluation uses this so a NaN from one flip can be rejected
+/// and reverted without aborting the whole search. Callers must handle NaN.
+pub fn measure_probes_allowing_non_finite<B: MiyagiBackend>(
     backend: &mut B,
     probes: &[CompiledProbe],
 ) -> Result<Vec<ProbeMeasurement>> {
@@ -102,11 +124,6 @@ pub fn measure_probes<B: MiyagiBackend>(
     probes
         .iter()
         .map(|compiled| {
-            // A patched row can drive logits outside the FP range, yielding a
-            // non-finite gap. This primitive returns it as data — callers decide
-            // what a NaN means. During search a NaN candidate is reverted and
-            // rejected (see `evaluate_candidate`); the baseline path guards
-            // against a non-finite baseline explicitly.
             let gap = backend.logit_gap(
                 &compiled.prompt_tokens,
                 compiled.correct_id,
